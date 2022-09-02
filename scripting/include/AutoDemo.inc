@@ -88,7 +88,7 @@ native void DemoRec_SetClientData(int iClient, const char[] szKey, const char[] 
  *
  * @return True if event should be written, false if blocked.
  */
-typedef DemoRec_EventListener = function bool (char[] szEventName, int iBufferLength, StringMap hEventDetails, any &data);
+typedef DemoRec_EventListener = function bool(char[] szEventName, int iBufferLength, StringMap hEventDetails, any &data);
 
 /**
  * Adds a event listener.

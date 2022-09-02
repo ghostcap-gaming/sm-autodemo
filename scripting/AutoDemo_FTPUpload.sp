@@ -98,6 +98,8 @@ public int BZ2CallBack(BZ_Error iError, char[] sFileFullDir, char[] sFileOut, an
 		LogError("Cannot compress file %s", sFileName);
 		CloseHandle(hTrie);
 	}
+	
+	return 0;
 }
 
 stock void UploadFtpFile(char[] sFileNameOut, char[] sFileOut, Handle hTrie) 

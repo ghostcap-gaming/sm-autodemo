@@ -17,6 +17,9 @@
  * along with this program.  If not, see http://www.gnu.org/licenses/
  */
 
+#pragma semicolon 1
+#pragma newdecls  required
+
 #include <sourcemod>
 #include <adt_array>
 #include <ripext>
@@ -28,15 +31,12 @@
 #define JSArr(%0) AS(JSONArray, %0)
 #define JSObj(%0) AS(JSONObject, %0)
 
-#pragma newdecls  required
-#pragma semicolon 1
-
 public Plugin myinfo = {
-  description = "Recorder Core for web-site",
-  version     = "1.4.0 Alpha 4",
-  author      = "CrazyHackGUT aka Kruzya",
-  name        = "[AutoDemo] Core",
-  url         = "https://kruzya.me"
+	description = "Recorder Core for web-site",
+	version = "1.5",
+	author = "CrazyHackGUT aka Kruzya, Lerrdy",
+	name = "[AutoDemo] Core",
+	url = "https://kruzya.me"
 };
 
 /**
@@ -111,6 +111,8 @@ public APLRes AskPluginLoad2(Handle hMySelf, bool bLate, char[] szError, int iBu
 
   g_hCorePlugin = hMySelf;
   g_hEventListeners = new StringMap();
+  
+  return APLRes_Success;
 }
 
 public void OnAllPluginsLoaded() {
@@ -223,30 +225,29 @@ static JSONObject API_GetClientJSON(int iAccountID)
  * -> hMetaData (StringMap)
  */
 public int API_TriggerEvent(Handle hPlugin, int iNumParams) {
-  if (!g_bRecording)
-    return; //ignore this event.
-
-  char szEventName[64];
-  GetNativeString(1, szEventName, sizeof(szEventName));
-
-  StringMap hEventData = GetNativeCell(2);
-  if (hEventData) {
-    hEventData = view_as<StringMap>(UTIL_LazyCloseHandle(CloneHandle(hEventData, g_hCorePlugin)));
-  }
-
-  any data = (iNumParams < 3 ? 0 : GetNativeCell(3));
-  if (!UTIL_TriggerEventListeners(szEventName, sizeof(szEventName), hEventData, data))
-  {
-    return;
-  }
-
-  JSONArray hEvents = JSArr(UTIL_LazyCloseHandle(g_hMetaInfo.Get("events")));
-  JSONObject hEvent = JSObj(UTIL_LazyCloseHandle(new JSONObject()));
-  hEvent.SetInt("time", GetTime());
-  hEvent.SetInt("tick", SourceTV_GetRecordingTick());
-  hEvent.SetString("event_name", szEventName);
-  hEvent.Set("data", JSObj(UTIL_LazyCloseHandle(UTIL_StringMapToJSON(hEventData))));
-  hEvents.Push(hEvent);
+	if (!g_bRecording)
+		return 0; //ignore this event.
+	
+	char szEventName[64];
+	GetNativeString(1, szEventName, sizeof(szEventName));
+	
+	StringMap hEventData = GetNativeCell(2);
+	if (hEventData)
+		hEventData = view_as<StringMap>(UTIL_LazyCloseHandle(CloneHandle(hEventData, g_hCorePlugin)));
+	
+	any data = (iNumParams < 3 ? 0 : GetNativeCell(3));
+	if (!UTIL_TriggerEventListeners(szEventName, sizeof(szEventName), hEventData, data))
+		return 0;
+	
+	JSONArray hEvents = JSArr(UTIL_LazyCloseHandle(g_hMetaInfo.Get("events")));
+	JSONObject hEvent = JSObj(UTIL_LazyCloseHandle(new JSONObject()));
+	hEvent.SetInt("time", GetTime());
+	hEvent.SetInt("tick", SourceTV_GetRecordingTick());
+	hEvent.SetString("event_name", szEventName);
+	hEvent.Set("data", JSObj(UTIL_LazyCloseHandle(UTIL_StringMapToJSON(hEventData))));
+	hEvents.Push(hEvent);
+	
+	return 0;
 }
 
 /**
@@ -254,12 +255,13 @@ public int API_TriggerEvent(Handle hPlugin, int iNumParams) {
  * -> szEventName (string const)
  * -> ptrListener (DemoRec_EventListener)
  */
-public int API_AddEventListener(Handle hPlugin, int iNumParams)
-{
-  char szEventName[64];
-  GetNativeString(1, szEventName, sizeof(szEventName));
-
-  UTIL_AddEventListener(szEventName, hPlugin, view_as<DemoRec_EventListener>(GetNativeFunction(2)));
+public int API_AddEventListener(Handle hPlugin, int iNumParams) {
+	char szEventName[64];
+	GetNativeString(1, szEventName, sizeof(szEventName));
+	
+	UTIL_AddEventListener(szEventName, hPlugin, GetNativeCell(2));
+	
+	return 0;
 }
 
 /**
@@ -269,10 +271,12 @@ public int API_AddEventListener(Handle hPlugin, int iNumParams)
  */
 public int API_RemoveEventListener(Handle hPlugin, int iNumParams)
 {
-  char szEventName[64];
-  GetNativeString(1, szEventName, sizeof(szEventName));
-
-  UTIL_RemoveEventListener(szEventName, hPlugin, view_as<DemoRec_EventListener>(GetNativeFunction(2)));
+	char szEventName[64];
+	GetNativeString(1, szEventName, sizeof(szEventName));
+	
+	UTIL_RemoveEventListener(szEventName, hPlugin, GetNativeCell(2));
+	
+	return 0;
 }
 
 /**
@@ -280,53 +284,53 @@ public int API_RemoveEventListener(Handle hPlugin, int iNumParams)
  * -> szField (string const)
  * -> szValue (string const)
  */
-public int API_SetDemoData(Handle hPlugin, int iNumParams)
-{
-  if (!g_bRecording)
-  {
-    return;
-  }
-
-  char szField[64];
-  char szValue[512];
-  GetNativeString(1, szField, sizeof(szField));
-  GetNativeString(2, szValue, sizeof(szValue));
-
-  JSONObject hCustom = JSObj(UTIL_LazyCloseHandle(g_hMetaInfo.Get("data")));
-  hCustom.SetString(szField, szValue);
+public int API_SetDemoData(Handle hPlugin, int iNumParams) {
+	if (!g_bRecording)
+		return 0;
+	
+	char szField[64];
+	char szValue[512];
+	GetNativeString(1, szField, sizeof(szField));
+	GetNativeString(2, szValue, sizeof(szValue));
+	
+	JSONObject hCustom = JSObj(UTIL_LazyCloseHandle(g_hMetaInfo.Get("data")));
+	hCustom.SetString(szField, szValue);
+	
+	return 0;
 }
 
 /**
  * Params for this native:
  * null
  */
-public int API_IsRecording(Handle hPlugin, int iNumParams)
-{
-  return g_bRecording;
+public int API_IsRecording(Handle hPlugin, int iNumParams) {
+	return g_bRecording;
 }
 
 /**
  * Params for this native:
  * null
  */
-public int API_StartRecord(Handle hPlugin, int iNumParams)
-{
-  if (g_bRecording)
-    return;
-
-  Recorder_Start();
+public int API_StartRecord(Handle hPlugin, int iNumParams) {
+	if (g_bRecording)
+		return 0;
+	
+	Recorder_Start();
+	
+	return 0;
 }
 
 /**
  * Params for this native:
  * null
  */
-public int API_StopRecord(Handle hPlugin, int iNumParams)
-{
-  if (!g_bRecording)
-    return;
-
-  Recorder_Stop();
+public int API_StopRecord(Handle hPlugin, int iNumParams) {
+	if (!g_bRecording)
+		return 0;
+	
+	Recorder_Stop();
+	
+	return 0;
 }
 
 /**
@@ -335,9 +339,8 @@ public int API_StopRecord(Handle hPlugin, int iNumParams)
  * -> szBuffer
  * -> iLength
  */
-public int API_GetDataDirectory(Handle hPlugin, int iNumParams)
-{
-  return SetNativeString(1, g_szBaseDemoPath, GetNativeCell(2));
+public int API_GetDataDirectory(Handle hPlugin, int iNumParams) {
+	return SetNativeString(1, g_szBaseDemoPath, GetNativeCell(2));
 }
 
 /**
@@ -347,32 +350,30 @@ public int API_GetDataDirectory(Handle hPlugin, int iNumParams)
  * -> szBuffer
  * -> iLength
  */
-public int API_GetClientData(Handle hPlugin, int iNumParams)
-{
-  if (!g_bRecording)
-    return 0;
-
-  int iClient = API_AssertIsValidClientByParamID(1);
-  int iAccountID = GetSteamAccountID(iClient);
-
-  // Find client in ArrayList.
-  JSONObject hClient = API_GetClientJSON(iAccountID);
-  API_AssertIsValidHandle(hClient, "Couldn't find client %L in registered players", iClient);
-
-  char szKey[128];
-  char szValue[512];
-
-  GetNativeString(2, szKey, sizeof(szKey));
-  JSONObject hData = JSObj(UTIL_LazyCloseHandle(hClient.Get("data")));
-  API_AssertIsValidHandle(hData, "Handle %x with client data %L is invalid", hData, iClient);
-
-  if (hData.GetString(szKey, szValue, sizeof(szValue)))
-  {
-    SetNativeString(3, szValue, GetNativeCell(4), true);
-    return true;
-  }
-
-  return false;
+public int API_GetClientData(Handle hPlugin, int iNumParams) {
+	if (!g_bRecording)
+		return 0;
+	
+	int iClient = API_AssertIsValidClientByParamID(1);
+	int iAccountID = GetSteamAccountID(iClient);
+	
+	// Find client in ArrayList.
+	JSONObject hClient = API_GetClientJSON(iAccountID);
+	API_AssertIsValidHandle(hClient, "Couldn't find client %L in registered players", iClient);
+	
+	char szKey[128];
+	char szValue[512];
+	
+	GetNativeString(2, szKey, sizeof(szKey));
+	JSONObject hData = JSObj(UTIL_LazyCloseHandle(hClient.Get("data")));
+	API_AssertIsValidHandle(hData, "Handle %x with client data %L is invalid", hData, iClient);
+	
+	if (hData.GetString(szKey, szValue, sizeof(szValue))) {
+		SetNativeString(3, szValue, GetNativeCell(4), true);
+		return true;
+	}
+	
+	return false;
 }
 
 /**
@@ -382,251 +383,231 @@ public int API_GetClientData(Handle hPlugin, int iNumParams)
  * -> szValue
  * -> bRewrite
  */
-public int API_SetClientData(Handle hPlugin, int iNumParams)
-{
-  if (!g_bRecording)
-    return 0;
-
-  int iClient = API_AssertIsValidClientByParamID(1);
-  int iAccountID = GetSteamAccountID(iClient);
-
-  // Find client in ArrayList.
-  JSONObject hClient = API_GetClientJSON(iAccountID);
-  API_AssertIsValidHandle(hClient, "Couldn't find client %L in registered players", iClient);
-
-  char szKey[128];
-  char szValue[512];
-
-  GetNativeString(2, szKey, sizeof(szKey));
-  GetNativeString(3, szValue, sizeof(szValue));
-
-  JSONObject hData = JSObj(UTIL_LazyCloseHandle(hClient.Get("data")));
-  API_AssertIsValidHandle(hData, "Handle %x with client data %L is invalid", hData, iClient);
-
-  if (!GetNativeCell(4) && hData.HasKey(szKey))
-  {
-    return 0;
-  }
-
-  hData.SetString(szKey, szValue);
-  return 0;
+public int API_SetClientData(Handle hPlugin, int iNumParams) {
+	if (!g_bRecording)
+		return 0;
+	
+	int iClient = API_AssertIsValidClientByParamID(1);
+	int iAccountID = GetSteamAccountID(iClient);
+	
+	// Find client in ArrayList.
+	JSONObject hClient = API_GetClientJSON(iAccountID);
+	API_AssertIsValidHandle(hClient, "Couldn't find client %L in registered players", iClient);
+	
+	char szKey[128];
+	char szValue[512];
+	
+	GetNativeString(2, szKey, sizeof(szKey));
+	GetNativeString(3, szValue, sizeof(szValue));
+	
+	JSONObject hData = JSObj(UTIL_LazyCloseHandle(hClient.Get("data")));
+	API_AssertIsValidHandle(hData, "Handle %x with client data %L is invalid", hData, iClient);
+	
+	if (!GetNativeCell(4) && hData.HasKey(szKey))
+		return 0;
+	
+	hData.SetString(szKey, szValue);
+	return 0;
 }
 
-bool API_IsShouldBeWrittenToMetadata(int iClient)
-{
-  Action eResult;
-
-  Call_StartForward(g_hShouldWriteClientFwd);
-  Call_PushCell(iClient);
-  Call_Finish(eResult);
-
-  return eResult < Plugin_Handled;
+bool API_IsShouldBeWrittenToMetadata(int iClient) {
+	Action eResult;
+	
+	Call_StartForward(g_hShouldWriteClientFwd);
+	Call_PushCell(iClient);
+	Call_Finish(eResult);
+	
+	return eResult < Plugin_Handled;
 }
 
 /**
  * @section Recorder Manager
  */
 void Recorder_Start() {
-  Recorder_Validate();
-
-  char szDemoPath[PLATFORM_MAX_PATH];
-  UTIL_GenerateUUID(g_szDemoName, sizeof(g_szDemoName));
-  FormatEx(szDemoPath, sizeof(szDemoPath), "%s/%s", g_szBaseDemoPath, g_szDemoName);
-  SourceTV_StartRecording(szDemoPath);
-
-  char szMapName[64];
-  GetCurrentMap(szMapName, sizeof(szMapName));
-
-  g_hMetaInfo = new JSONObject();
-  g_hMetaInfo.SetString("unique_id", g_szDemoName);
-  g_hMetaInfo.SetString("play_map", szMapName);
-  g_hMetaInfo.SetInt("start_time", GetTime());
-  g_hMetaInfo.Set("players", JSArr(UTIL_LazyCloseHandle(new JSONArray())));
-  g_hMetaInfo.Set("events", JSArr(UTIL_LazyCloseHandle(new JSONArray())));
-  g_hMetaInfo.Set("data", JSObj(UTIL_LazyCloseHandle(new JSONObject())));
-
-  g_bRecording = true;
-
-  for (int iClient = MaxClients; iClient != 0; --iClient)
-    if (IsClientConnected(iClient) && IsClientAuthorized(iClient))
-      OnClientAuthorized(iClient, NULL_STRING);
-
-  Call_StartForward(g_hStartRecordFwd);
-  Call_PushString(g_szDemoName);
-  Call_Finish();
+	Recorder_Validate();
+	
+	char szDemoPath[PLATFORM_MAX_PATH];
+	UTIL_GenerateUUID(g_szDemoName, sizeof(g_szDemoName));
+	FormatEx(szDemoPath, sizeof(szDemoPath), "%s/%s", g_szBaseDemoPath, g_szDemoName);
+	SourceTV_StartRecording(szDemoPath);
+	
+	char szMapName[64];
+	GetCurrentMap(szMapName, sizeof(szMapName));
+	
+	g_hMetaInfo = new JSONObject();
+	g_hMetaInfo.SetString("unique_id", g_szDemoName);
+	g_hMetaInfo.SetString("play_map", szMapName);
+	g_hMetaInfo.SetInt("start_time", GetTime());
+	g_hMetaInfo.Set("players", JSArr(UTIL_LazyCloseHandle(new JSONArray())));
+	g_hMetaInfo.Set("events", JSArr(UTIL_LazyCloseHandle(new JSONArray())));
+	g_hMetaInfo.Set("data", JSObj(UTIL_LazyCloseHandle(new JSONObject())));
+	
+	g_bRecording = true;
+	
+	for (int iClient = MaxClients; iClient != 0; --iClient)
+		if (IsClientConnected(iClient) && IsClientAuthorized(iClient))
+			OnClientAuthorized(iClient, NULL_STRING);
+	
+	Call_StartForward(g_hStartRecordFwd);
+	Call_PushString(g_szDemoName);
+	Call_Finish();
 }
 
 void Recorder_Stop() {
-  Recorder_Validate();
-
-  Call_StartForward(g_hFinishRecordFwd);
-  Call_PushString(g_szDemoName);
-  Call_Finish();
-
-  int iRecordedTicks = SourceTV_GetRecordingTick();
-  SourceTV_StopRecording();
-  g_bRecording = false;
-
-  char szDemoPath[PLATFORM_MAX_PATH];
-  int iPos = FormatEx(szDemoPath, sizeof(szDemoPath), "%s/%s", g_szBaseDemoPath, g_szDemoName);
-
-  strcopy(szDemoPath[iPos], sizeof(szDemoPath)-iPos, ".json");
-  g_hMetaInfo.SetInt("end_time",        GetTime());
-  g_hMetaInfo.SetInt("recorded_ticks",  iRecordedTicks);
-  g_hMetaInfo.ToFile(szDemoPath);
-  g_hMetaInfo.Close();
+	Recorder_Validate();
+	
+	Call_StartForward(g_hFinishRecordFwd);
+	Call_PushString(g_szDemoName);
+	Call_Finish();
+	
+	int iRecordedTicks = SourceTV_GetRecordingTick();
+	SourceTV_StopRecording();
+	g_bRecording = false;
+	
+	char szDemoPath[PLATFORM_MAX_PATH];
+	int iPos = FormatEx(szDemoPath, sizeof(szDemoPath), "%s/%s", g_szBaseDemoPath, g_szDemoName);
+	
+	strcopy(szDemoPath[iPos], sizeof(szDemoPath)-iPos, ".json");
+	g_hMetaInfo.SetInt("end_time",        GetTime());
+	g_hMetaInfo.SetInt("recorded_ticks",  iRecordedTicks);
+	g_hMetaInfo.ToFile(szDemoPath);
+	g_hMetaInfo.Close();
 }
 
-void Recorder_Validate()
-{
-  if (!SourceTV_IsActive())
-    SetFailState("SourceTV bot is not active."); // TODO: just throw an error? Native or general?
+void Recorder_Validate() {
+	if (!SourceTV_IsActive())
+		SetFailState("SourceTV bot is not active."); // TODO: just throw an error? Native or general?
 }
 
 /**
  * @section UTILs
  */
 int UTIL_GenerateUUID(char[] szBuffer, int iBufferLength) {
-  return FormatEx(szBuffer, iBufferLength, "%04x%04x-%04x-%04x-%04x-%04x%04x%04x",
-    // 32 bits for "time_low"
-    GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff),
-
-    // 16 bits for "time_mid"
-    GetRandomInt(0, 0xffff),
-
-    // 16 bits for "time_hi_and_version"
-    // four most significant bits holds version number 4
-    (GetRandomInt(0, 0x0fff) | 0x4000),
-
-    // 16 bits, 8 bits for "clk_seq_hi_res",
-    // 8 bits for "clk_seq_low",
-    // two most significant bits holds zero and one for variant DCE1.1
-    (GetRandomInt(0, 0x3fff) | 0x8000),
-
-    // 48 bits for node
-    GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff)
-  );
+	return FormatEx(szBuffer, iBufferLength, "%04x%04x-%04x-%04x-%04x-%04x%04x%04x",
+		// 32 bits for "time_low"
+		GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff),
+	
+		// 16 bits for "time_mid"
+		GetRandomInt(0, 0xffff),
+	
+		// 16 bits for "time_hi_and_version"
+		// four most significant bits holds version number 4
+		(GetRandomInt(0, 0x0fff) | 0x4000),
+	
+		// 16 bits, 8 bits for "clk_seq_hi_res",
+		// 8 bits for "clk_seq_low",
+		// two most significant bits holds zero and one for variant DCE1.1
+		(GetRandomInt(0, 0x3fff) | 0x8000),
+	
+		// 48 bits for node
+		GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff), GetRandomInt(0, 0xffff)
+	);
 }
 
 JSONObject UTIL_StringMapToJSON(StringMap hMap) {
-  JSONObject hJSON = new JSONObject();
-  if (hMap) {
-    StringMapSnapshot hShot = hMap.Snapshot();
-
-    char szKey[256];
-    char szValue[256];
-    int iDataCount = hShot.Length;
-
-    for (int iDataID; iDataID < iDataCount; ++iDataID) {
-      hShot.GetKey(iDataID, szKey, sizeof(szKey));
-      if (hMap.GetString(szKey, szValue, sizeof(szValue))) {
-        hJSON.SetString(szKey, szValue);
-      }
-    }
-
-    hShot.Close();
-  }
-  return hJSON;
+	JSONObject hJSON = new JSONObject();
+	if (hMap) {
+		StringMapSnapshot hShot = hMap.Snapshot();
+	
+		char szKey[256];
+		char szValue[256];
+		int iDataCount = hShot.Length;
+	
+		for (int iDataID; iDataID < iDataCount; ++iDataID) {
+			hShot.GetKey(iDataID, szKey, sizeof(szKey));
+			if (hMap.GetString(szKey, szValue, sizeof(szValue)))
+				hJSON.SetString(szKey, szValue);
+		}
+	
+		hShot.Close();
+	}
+	return hJSON;
 }
 
-bool UTIL_TriggerEventListeners(char[] szEventName, int iBufferLength, StringMap &hMap, any &data)
-{
-  ArrayList hListeners;
-  if (!g_hEventListeners.GetValue(szEventName, hListeners))
-  {
-    // event listeners is not registered for this event.
-    // so just allow writing this event.
-    return true;
-  }
-
-  // Setup StringMap with event details, if it doesn't exists.
-  // We're should guarantee for our plugin listeners in existing
-  // this handle.
-  if (hMap == null)
-  {
-    hMap = new StringMap();
-  }
-
-  // Call all listeners.
-  Handle hPlugin;
-  DemoRec_EventListener ptrListener;
-  DataPack hStorage;
-
-  bool bResult;
-
-  int iLength = hListeners.Length;
-  for (int iListener = 0; iListener < iLength; ++iListener)
-  {
-    hStorage = hListeners.Get(iListener);
-    hStorage.Reset();
-
-    hPlugin = hStorage.ReadCell();
-    ptrListener = view_as<DemoRec_EventListener>(hStorage.ReadFunction());
-
-    Call_StartFunction(hPlugin, ptrListener);
-    Call_PushStringEx(szEventName, iBufferLength, SM_PARAM_STRING_UTF8 | SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
-    Call_PushCell(iBufferLength);
-    Call_PushCell(hMap);
-    Call_PushCellRef(data);
-    Call_Finish(bResult);
-
-    if (!bResult)
-    {
-      // Someone listener returned false.
-      // Stop handling this event.
-      return false;
-    }
-  }
-
-  return true;
+bool UTIL_TriggerEventListeners(char[] szEventName, int iBufferLength, StringMap &hMap, any &data) {
+	ArrayList hListeners;
+	if (!g_hEventListeners.GetValue(szEventName, hListeners)) {
+		// event listeners is not registered for this event.
+		// so just allow writing this event.
+		return true;
+	}
+	
+	// Setup StringMap with event details, if it doesn't exists.
+	// We're should guarantee for our plugin listeners in existing
+	// this handle.
+	if (hMap == null)
+		hMap = new StringMap();
+		
+	// Call all listeners.
+	Handle hPlugin;
+	DemoRec_EventListener ptrListener;
+	DataPack hStorage;
+	
+	bool bResult;
+	
+	int iLength = hListeners.Length;
+	for (int iListener = 0; iListener < iLength; ++iListener) {
+		hStorage = hListeners.Get(iListener);
+		hStorage.Reset();
+	
+		hPlugin = hStorage.ReadCell();
+		ptrListener = hStorage.ReadCell();
+	
+		Call_StartFunction(hPlugin, ptrListener);
+		Call_PushStringEx(szEventName, iBufferLength, SM_PARAM_STRING_UTF8 | SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+		Call_PushCell(iBufferLength);
+		Call_PushCell(hMap);
+		Call_PushCellRef(data);
+		Call_Finish(bResult);
+	
+		if (!bResult) {
+			// Someone listener returned false.
+			// Stop handling this event.
+			return false;
+		}
+	}
+	
+	return true;
 }
 
-void UTIL_AddEventListener(const char[] szEventName, Handle hPlugin, DemoRec_EventListener ptrListener)
-{
-  ArrayList hListeners;
-  if (!g_hEventListeners.GetValue(szEventName, hListeners))
-  {
-    hListeners = new ArrayList(ByteCountToCells(4));
-    g_hEventListeners.SetValue(szEventName, hListeners);
-  }
-
-  DataPack hPack = new DataPack();
-  hListeners.Push(hPack);
-
-  hPack.WriteCell(hPlugin);
-  hPack.WriteFunction(ptrListener);
+void UTIL_AddEventListener(const char[] szEventName, Handle hPlugin, DemoRec_EventListener ptrListener) {
+	ArrayList hListeners;
+	if (!g_hEventListeners.GetValue(szEventName, hListeners)) {
+		hListeners = new ArrayList(ByteCountToCells(4));
+		g_hEventListeners.SetValue(szEventName, hListeners);
+	}
+	
+	DataPack hPack = new DataPack();
+	hListeners.Push(hPack);
+	
+	hPack.WriteCell(hPlugin);
+	hPack.WriteFunction(ptrListener);
 }
 
-void UTIL_RemoveEventListener(const char[] szEventName, Handle hPlugin, DemoRec_EventListener ptrListener)
-{
-  ArrayList hListeners;
-  if (!g_hEventListeners.GetValue(szEventName, hListeners))
-  {
-    // This no has meaning. Just stop.
-    return;
-  }
-
-  DataPack hPack;
-  int iEventListeners = hListeners.Length;
-  for (int iEventListener = 0; iEventListener < iEventListeners; ++iEventListener)
-  {
-    hPack = hListeners.Get(iEventListener);
-    hPack.Reset();
-
-    if (hPack.ReadCell() != hPlugin)
-    {
-      continue;
-    }
-
-    if (hPack.ReadFunction() != ptrListener)
-    {
-      continue;
-    }
-
-    hPack.Close();
-    hListeners.Erase(iEventListener);
-    break;
-  }
+void UTIL_RemoveEventListener(const char[] szEventName, Handle hPlugin, DemoRec_EventListener ptrListener) {
+	ArrayList hListeners;
+	if (!g_hEventListeners.GetValue(szEventName, hListeners)) {
+		// This no has meaning. Just stop.
+		return;
+	}
+	
+	DataPack hPack;
+	int iEventListeners = hListeners.Length;
+	for (int iEventListener = 0; iEventListener < iEventListeners; ++iEventListener) {
+		hPack = hListeners.Get(iEventListener);
+		hPack.Reset();
+	
+		if (hPack.ReadCell() != hPlugin)
+			continue;
+	
+		if (hPack.ReadFunction() != ptrListener)
+			continue;
+	
+		hPack.Close();
+		hListeners.Erase(iEventListener);
+		
+		break;
+	}
 }
 
 /**
@@ -635,17 +616,13 @@ void UTIL_RemoveEventListener(const char[] szEventName, Handle hPlugin, DemoRec_
  * @param     hHandle   Handle for lazy closing.
  * @return              Passed handle.
  */
-stock Handle UTIL_LazyCloseHandle(Handle hHandle)
-{
-  if (hHandle)
-  {
-    RequestFrame(OnHandleShouldBeClosed, hHandle);
-  }
-
-  return hHandle;
+stock Handle UTIL_LazyCloseHandle(Handle hHandle) {
+	if (hHandle)
+		RequestFrame(OnHandleShouldBeClosed, hHandle);
+	
+	return hHandle;
 }
 
-static void OnHandleShouldBeClosed(Handle hHndl)
-{
-  hHndl.Close();
+static void OnHandleShouldBeClosed(Handle hHndl) {
+	hHndl.Close();
 }
